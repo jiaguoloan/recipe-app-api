@@ -2,8 +2,17 @@ FROM python:3.9-alpine3.13
 
 LABEL maintainer="londonappdeveloper.com"
 
+RUN apk add --no-cache --virtual .build-deps \
+    gcc \
+    musl-dev \
+    python3-dev \
+    postgresql-dev \
+    libffi-dev
+
+
 # Install required system packages
-RUN apk add --no-cache \
+RUN  apk add --update --no-cache postgresql-client && \
+    apk add --update --no-cache --virtual .tmp-build-deps \
     python3-dev \
     libffi-dev \
     gcc \
@@ -12,11 +21,16 @@ RUN apk add --no-cache \
     postgresql-dev \
     py3-virtualenv \
     py3-pip
+RUN apk add --update --no-cache \
+    postgresql-dev \
+    postgresql-libs
+
 
 ENV PYTHONUNBUFFERED=1
 
 # Create a non-root user before switching
-RUN adduser \
+RUN apk del .tmp-build-deps && \
+    adduser \
         --disabled-password \
         --no-create-home \
         django-user
@@ -33,7 +47,7 @@ COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
 # Install dependencies and conditionally remove requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
-    if [ "$DEV" = "true" ]; then rm -f /tmp/requirements.txt; fi
+    sh -c 'if [ "$DEV" = "true" ]; then rm -f /tmp/requirements.txt; fi'
 
 RUN pip install flake8
 
